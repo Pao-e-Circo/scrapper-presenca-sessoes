@@ -153,3 +153,5 @@ try:
         session.add_all(attendences)
         session.commit()
         print('Inserção das presenças/ausências das reuniões concluída.')
+finally:
+    pass
