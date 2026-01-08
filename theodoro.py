@@ -32,7 +32,7 @@ class Attendence(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     councilor_id: Mapped[uuid.UUID] = mapped_column(sqlalchemy.ForeignKey("councilours.id"), nullable=False)
-    month: Mapped[str] = mapped_column(default=date.today)
+    month: Mapped[str] = mapped_column(sqlalchemy.String, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
 
     councilour: Mapped["Councilour"] = relationship(back_populates="attendances")
