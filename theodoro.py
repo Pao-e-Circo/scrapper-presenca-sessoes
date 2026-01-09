@@ -32,7 +32,7 @@ class Attendence(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     councilor_id: Mapped[uuid.UUID] = mapped_column(sqlalchemy.ForeignKey("councilours.id"), nullable=False)
-    month: Mapped[str] = mapped_column(sqlalchemy.String, nullable=False)
+    month: Mapped[date] = mapped_column(sqlalchemy.Date, nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
 
     councilour: Mapped["Councilour"] = relationship(back_populates="attendances")
@@ -50,21 +50,47 @@ def get_attendence_status_from_scrapped_str(text: str):
 def get_name_from_scrapped_str(text: str):
     return re.sub(r"\b(PRESENTE|Ausente|Justificado)\b", "", text, re.IGNORECASE).strip()
 
+def parse_date_from_string(date_str: str) -> date:
+    """
+    Converte uma string no formato "02 de Janeiro de 2024" para um objeto date.
+    """
+    match = re.match(r"(\d{2}) de ([A-Za-zç]+) de (\d{4})", date_str)
+    if not match:
+        raise ValueError(f"Formato de data inválido: {date_str}")
+    
+    day = int(match.group(1))
+    month_name = match.group(2).lower()
+    year = int(match.group(3))
+    
+    months = {
+        'janeiro': 1, 'fevereiro': 2, 'março': 3, 'abril': 4,
+        'maio': 5, 'junho': 6, 'julho': 7, 'agosto': 8,
+        'setembro': 9, 'outubro': 10, 'novembro': 11, 'dezembro': 12
+    }
+    
+    month = months.get(month_name)
+    if not month:
+        raise ValueError(f"Nome do mês inválido: {month_name}")
+    
+    return date(year, month, day)
+
 def add_attendence(client: sqlalchemy.Engine, attendences: list[Attendence], text: list[str]):
     session_date_regex = r"\d{2} de [A-Z][a-z]+ de \d{4}"
-    session_date: str
+    session_date_str: str = None
+    session_date: date = None
 
     councilours = get_all_councilours(client)
 
     for i in text:
         if re.match(session_date_regex, i): # will always hit this condition on the first iteration
-            session_date = i
+            session_date_str = i
+            session_date = parse_date_from_string(i)
             continue
         if any(x in i for x in ['PRESENTE', 'Ausente', 'Justificado']):
             councilour = get_councilour_name(get_name_from_scrapped_str(i), councilours)
 
             if (councilour is None):
-                print(f'O vereador {get_name_from_scrapped_str(i)} participou da reunião de {session_date}, mas ele não foi encontrado '
+                print(f'O vereador {get_name_from_scrapped_str(i)} participou da reunião de {session_date_str}, mas ele não foi encontrado '
                       'na base de dados do paecirco.org.')
                 continue
 
@@ -79,15 +105,9 @@ def get_all_councilours(client: sqlalchemy.Engine):
         stmt = sqlalchemy.select(Councilour)
         return session.scalars(stmt).all()
 
-def throw_exception_if_current_month_already_executed(client: sqlalchemy.Engine, month_name, year):
+def throw_exception_if_current_month_already_executed(client: sqlalchemy.Engine, check_date: date):
     with Session(client) as session:
-        stmt = (
-            select(Attendence)
-            .where(
-                (Attendence.month.ilike(f"%{month_name}%")) &
-                (Attendence.month.ilike(f"%{year}%"))
-            )
-        )
+        stmt = select(Attendence).where(Attendence.month == check_date)
 
         has_any = session.scalars(stmt).all()
 
@@ -124,9 +144,8 @@ Base.metadata.create_all(client)
 ##TODO create docker file with environment variables
 
 today = date.today()
-month_name = f"{today.strftime("%B")}"
 
-throw_exception_if_current_month_already_executed(client, month_name, today.year)
+throw_exception_if_current_month_already_executed(client, today)
 
 path = get_last_attendence_pdf_full_path()
 last_month = f"{today.year}/{today.month - 1}/{today.day}" 
