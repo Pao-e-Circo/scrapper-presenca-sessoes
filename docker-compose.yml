@@ -1,0 +1,13 @@
+services:
+  scrapper-presenca-sessoes:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /apps/despesas-de-gabinete-e-presencas-de-sessao:/data/attendences:ro
+    networks:
+      - server_default
+
+networks:
+  server_default:
+    external: true
