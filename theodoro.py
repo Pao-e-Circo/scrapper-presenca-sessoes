@@ -135,7 +135,7 @@ def get_last_attendence_pdf_full_path():
 locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
 
 client = sqlalchemy.create_engine(
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/paoecirco.org",
+    "postgresql+psycopg2://postgres:postgres@server-database-1:5432/paoecirco.org",
     echo=True
 )
 
