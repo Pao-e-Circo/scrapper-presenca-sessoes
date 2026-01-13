@@ -54,7 +54,7 @@ def parse_date_from_string(date_str: str) -> date:
     """
     Converte uma string no formato "02 de Janeiro de 2024" para um objeto date.
     """
-    match = re.match(r"(\d{2}) de ([A-Za-zç]+) de (\d{4})", date_str)
+    match = re.match(r"^(\d{1,2}) de ([A-Za-zÀ-ÿ]+) de (\d{4})(?:\s*\|.*)?$", date_str)
     if not match:
         raise ValueError(f"Formato de data inválido: {date_str}")
     
@@ -75,7 +75,7 @@ def parse_date_from_string(date_str: str) -> date:
     return date(year, month, day)
 
 def add_attendence(client: sqlalchemy.Engine, attendences: list[Attendence], text: list[str]):
-    session_date_regex = r"\d{2} de [A-Z][a-z]+ de \d{4}"
+    session_date_regex = r'^\d{1,2} de [A-Za-zÀ-ÿ]+ de \d{4} \| [A-Za-zÀ-ÿ\s]+$'
     session_date_str: str = None
     session_date: date = None
 
