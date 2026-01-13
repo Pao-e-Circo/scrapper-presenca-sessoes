@@ -132,9 +132,9 @@ def get_last_attendence_pdf_full_path():
         print(f"Nenhum arquivo PDF encontrado em {path}. Os arquivos de presença precisam ser inseridos nessa pasta.")
         raise Exception()
 
-def is_councilours_empty(client: sqlalchemy.Engine) -> bool:
+def is_attendences_empty(client: sqlalchemy.Engine) -> bool:
     with Session(client) as session:
-        stmt = select(Councilour)
+        stmt = select(Attendence)
         return len(session.scalars(stmt).all()) == 0
 
 def get_all_attendence_pdfs_sorted():
