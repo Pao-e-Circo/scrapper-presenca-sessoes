@@ -1,5 +1,6 @@
 services:
   scrapper-presenca-sessoes:
+    container_name: scrapper-presenca-sessoes
     build:
       context: .
       dockerfile: Dockerfile
