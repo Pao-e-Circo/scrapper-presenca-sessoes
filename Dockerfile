@@ -21,4 +21,4 @@ COPY . /code
 
 ENV paoecirco.org_attendences_folder=/data/attendences
 
-CMD ["bash"]
+CMD ["tail", "-f", "/dev/null"]
