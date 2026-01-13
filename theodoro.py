@@ -181,7 +181,7 @@ client = sqlalchemy.create_engine(
 
 Base.metadata.create_all(client)
 
-if is_councilours_empty(client):
+if is_attendences_empty(client):
     process_initial_migration(client)
 
 today = date.today()
