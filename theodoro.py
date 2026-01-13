@@ -132,19 +132,59 @@ def get_last_attendence_pdf_full_path():
         print(f"Nenhum arquivo PDF encontrado em {path}. Os arquivos de presença precisam ser inseridos nessa pasta.")
         raise Exception()
 
+def is_councilours_empty(client: sqlalchemy.Engine) -> bool:
+    with Session(client) as session:
+        stmt = select(Councilour)
+        return len(session.scalars(stmt).all()) == 0
+
+def get_all_attendence_pdfs_sorted():
+    path = os.getenv("paoecirco.org_attendences_folder")
+    attendences_files = [f for f in Path(path).glob("*.pdf") if f.stem.isdigit()]
+    
+    if not attendences_files:
+        print(f"Nenhum arquivo PDF encontrado em {path}. Os arquivos de presença precisam ser inseridos nessa pasta.")
+        raise Exception()
+    
+    return sorted(attendences_files, key=lambda f: int(f.stem))
+
+def process_initial_migration(client: sqlalchemy.Engine):
+    print("Parece que não há nenhuma presença de sessão armazenada na base de dados.")
+    print("Pressione qualquer tecla para seguir com a migração inicial.")
+    input()
+    
+    pdf_files = get_all_attendence_pdfs_sorted()
+    
+    for pdf_path in pdf_files:
+        print(f"\nProcessando arquivo: {pdf_path.name}")
+        reader = PdfReader(pdf_path)
+        attendences = []
+        
+        for i in range(len(reader.pages)):
+            page = reader.pages[i]
+            text = page.extract_text().splitlines()
+            add_attendence(client, attendences, text)
+        
+        with Session(client) as session:
+            session.add_all(attendences)
+            session.commit()
+            print(f"Arquivo {pdf_path.name} processado e inserido com sucesso.")
+    
+    print("\nMigração inicial concluída com sucesso!")
+    sys.exit(0)
+
 locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
 
 client = sqlalchemy.create_engine(
     "postgresql+psycopg2://postgres:postgres@server-database-1:5432/paoecirco.org",
-    echo=True
+    echo=False
 )
 
 Base.metadata.create_all(client)
 
-##TODO create docker file with environment variables
+if is_councilours_empty(client):
+    process_initial_migration(client)
 
 today = date.today()
-
 throw_exception_if_current_month_already_executed(client, today)
 
 path = get_last_attendence_pdf_full_path()
