@@ -147,13 +147,7 @@ def get_all_attendence_pdfs_sorted():
     
     return sorted(attendences_files, key=lambda f: int(f.stem))
 
-def process_initial_migration(client: sqlalchemy.Engine):
-    print("Parece que não há nenhuma presença de sessão armazenada na base de dados.")
-    print("Pressione qualquer tecla para seguir com a migração inicial.")
-    input()
-    
-    pdf_files = get_all_attendence_pdfs_sorted()
-    
+def bulk_insert_multiple_attendences(client: sqlalchemy.Engine, pdf_files: list[Path]):
     for pdf_path in pdf_files:
         print(f"\nProcessando arquivo: {pdf_path.name}")
         reader = PdfReader(pdf_path)
@@ -169,7 +163,7 @@ def process_initial_migration(client: sqlalchemy.Engine):
             session.commit()
             print(f"Arquivo {pdf_path.name} processado e inserido com sucesso.")
     
-    print("\nMigração inicial concluída com sucesso!")
+    print('Todos os arquivos foram processados e inseridos com sucesso.')
     sys.exit(0)
 
 locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
@@ -181,36 +175,42 @@ client = sqlalchemy.create_engine(
 
 Base.metadata.create_all(client)
 
-if is_attendences_empty(client):
-    process_initial_migration(client)
+pdf_files = get_all_attendence_pdfs_sorted()
 
-today = date.today()
-throw_exception_if_current_month_already_executed(client, today)
+print(f"Digite 1 para inserir todos os registros no caminho especificado.")
+print(f"Digite qualquer outra tecla para inserir apenas o último PDF do caminho especificado.")
+print(f"O caminho especificado é: {pdf_files[0].parent}")
+i = input()
 
-path = get_last_attendence_pdf_full_path()
-last_month = f"{today.year}/{today.month - 1}/{today.day}" 
+if i == "1":
+    bulk_insert_multiple_attendences(client, pdf_files)
+else:
+    today = date.today()
+    throw_exception_if_current_month_already_executed(client, today)
 
-print(f"O arquivo {path} será processado, ele deve representar o mês {last_month}. Se isso estiver correto, clique qualquer tecla para continuar.")
-input()
+    path = get_last_attendence_pdf_full_path()
 
-print(f"\nIniciando a raspagem do relatório de presenças em {last_month}.")
+    print(f"O arquivo {path} será processado. Se isso estiver correto, clique qualquer tecla para continuar.")
+    input()
 
-reader = PdfReader(path)
-page = reader.pages[0]
-text = page.extract_text().splitlines()
+    print(f"\nIniciando a raspagem do relatório de presenças em {path}.")
 
-attendences = []
-
-for i in range(len(reader.pages)):
-    page = reader.pages[i]
+    reader = PdfReader(path)
+    page = reader.pages[0]
     text = page.extract_text().splitlines()
-    add_attendence(client, attendences, text)
 
-try:
-    with Session(client) as session:
-        print('Iniciando inserção das presenças/ausências das reuniões.')
-        session.add_all(attendences)
-        session.commit()
-        print('Inserção das presenças/ausências das reuniões concluída.')
-finally:
-    pass
+    attendences = []
+
+    for i in range(len(reader.pages)):
+        page = reader.pages[i]
+        text = page.extract_text().splitlines()
+        add_attendence(client, attendences, text)
+
+    try:
+        with Session(client) as session:
+            print('Iniciando inserção das presenças/ausências das reuniões.')
+            session.add_all(attendences)
+            session.commit()
+            print('Inserção das presenças/ausências das reuniões concluída.')
+    finally:
+        pass
