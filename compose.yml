@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - /apps/despesas-de-gabinete-e-presencas-de-sessoes/blumenau/presencas:/data/attendences:ro
+      - /apps/despesas-de-gabinete-e-presencas-de-sessoes/blumenau/presencas/2025:/data/attendences:ro
     networks:
       - server_default
 
